@@ -39,7 +39,7 @@ dependencies {
 
 tasks {
     base {
-        archivesName = id
+        archivesName = plugin_name
     }
 
     withType<ProcessResources> {
