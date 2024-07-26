@@ -39,15 +39,6 @@ class OptionsPluginImpl : JavaPlugin() {
         event<PlayerQuitEvent> {
             (optionsManager as? PersistentOptionsManager)?.freeFromCache(player.uniqueId)
         }
-
-        ExampleImpl().fakeOnEnable()
-
-        "options-save" {
-            runs<Player> {
-                optionsManager.storageImpl.save()
-                reply(!"&aSaved ${optionsManager.cache.size}")
-            }
-        } register this
     }
 
     companion object {
