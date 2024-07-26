@@ -1,5 +1,6 @@
 package com.mattmx.options.loader.storage
 
+import com.mattmx.ktgui.scheduling.async
 import com.mattmx.ktgui.scheduling.asyncRepeat
 import com.mattmx.options.OptionsHolder
 import com.mattmx.options.OptionsPluginImpl
@@ -12,13 +13,20 @@ class YamlOptionsStorage(
     val autoSavePeriod: Long
 ) : PersistentOptionsStorage {
     val yaml = file.let { f ->
-        if (!f.exists()) f.createNewFile()
+        if (!f.exists()) {
+            f.parentFile.mkdirs()
+            f.createNewFile()
+        }
         YamlConfiguration.loadConfiguration(f)
     }
     private val unknownIdsLogged: MutableSet<String> = Collections.synchronizedSet(mutableSetOf<String>())
 
-    init {
-        asyncRepeat(autoSavePeriod) { yaml.save(file) }
+    override fun start() {
+        asyncRepeat(autoSavePeriod) { save() }
+    }
+
+    fun save() {
+        yaml.save(file)
     }
 
     override fun getOptions(uniqueId: UUID): OptionsHolder? {

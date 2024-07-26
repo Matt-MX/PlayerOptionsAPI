@@ -1,53 +1,50 @@
-import org.jetbrains.kotlin.gradle.plugin.mpp.pm20.archivesName
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import java.io.BufferedReader
+import java.io.InputStreamReader
 
 plugins {
-    kotlin("jvm") version "1.7.10"
-    id("com.github.johnrengelman.shadow") version "7.0.0"
-    id("org.ajoberstar.grgit") version "4.1.0"
+    alias(libs.plugins.runPaper)
+    alias(libs.plugins.paperweight) apply true
+    alias(libs.plugins.kotlinJvm) apply true
+    alias(libs.plugins.shadow) apply true
 
-    // Check for new versions at https://plugins.gradle.org/plugin/io.papermc.paperweight.userdev
-    id("io.papermc.paperweight.userdev") version "1.7.1"
     `maven-publish`
 }
 
-val group_name: String by project
-group = group_name
-version = project.properties["version"].toString()
-val id: String by project
+runPaper.folia.registerTask()
 
-val plugin_name: String by project
-val plugin_main_class_name: String by project
-val plugin_author: String by project
-val include_commit_hash: String by project
-
-val ktgui_version: String by project
-val paper_version: String by project
+val id = findProperty("id").toString()
+val pluginName = findProperty("plugin_name")
 
 repositories {
+    mavenLocal()
     mavenCentral()
+    maven("https://repo.papermc.io/repository/maven-public/")
     maven("https://maven.pvphub.me/releases")
+    maven("https://repo.dmulloy2.net/repository/public/")
+    maven("https://jitpack.io")
+    maven("https://repo.extendedclip.com/content/repositories/placeholderapi/")
 }
 
 dependencies {
-    testImplementation(kotlin("test"))
-    compileOnly(kotlin("stdlib"))
+    paperweight.paperDevBundle(libs.versions.paperApi.get())
 
-    compileOnly("com.mattmx:ktgui:${ktgui_version}")
-    paperweight.paperDevBundle(paper_version)
+    compileOnly(libs.ktgui)
+    compileOnly(libs.placeholder.api)
 }
 
 tasks {
     base {
-        archivesName = plugin_name
+        archivesName = id
     }
 
     withType<ProcessResources> {
         val props = mapOf(
-            "name" to plugin_name,
-            "main" to "${group_name}.${id}.${plugin_main_class_name}",
-            "author" to plugin_author,
-            "version" to if (include_commit_hash.toBoolean()) "${rootProject.version}-commit-${grgit.head().abbreviatedId}" else rootProject.version.toString()
+            "name" to pluginName,
+            "main" to "${findProperty("group_name")}.${id}.${findProperty("plugin_main_class_name")}",
+            "author" to findProperty("plugin_author"),
+            "version" to if (findProperty("include_commit_hash")
+                    .toString().toBoolean()
+            ) "${rootProject.version}-commit-${getCurrentCommitHash()}" else rootProject.version.toString()
         )
         inputs.properties(props)
         filteringCharset = "UTF-8"
@@ -58,6 +55,9 @@ tasks {
 
     shadowJar {
         mergeServiceFiles()
+        minimize {
+            exclude("kotlin/**")
+        }
     }
 
     test {
@@ -68,15 +68,24 @@ tasks {
         dependsOn("reobfJar")
     }
 
-    withType<KotlinCompile> {
-        kotlinOptions.jvmTarget = "17"
+    runServer {
+        val mcVersion = libs.versions.paperApi.get().split("-")[0]
+        minecraftVersion(mcVersion)
+
+        downloadPlugins {
+            hangar("ViaVersion", "5.0.1")
+            hangar("ViaBackwards", "5.0.1")
+            hangar("PlaceholderAPI", "2.11.6")
+        }
     }
 }
 
 java {
     withJavadocJar()
     withSourcesJar()
+    toolchain.languageVersion = JavaLanguageVersion.of(21)
 }
+
 
 sourceSets["main"].resources.srcDir("src/resources/")
 
@@ -98,5 +107,18 @@ publishing {
             artifactId = id
             version = rootProject.version.toString()
         }
+    }
+}
+
+fun getCurrentCommitHash(): String {
+    val process = ProcessBuilder("git", "rev-parse", "HEAD").start()
+    val reader = BufferedReader(InputStreamReader(process.inputStream))
+    val commitHash = reader.readLine()
+    reader.close()
+    process.waitFor()
+    if (process.exitValue() == 0) {
+        return commitHash?.substring(0, 7) ?: ""
+    } else {
+        throw IllegalStateException("Failed to retrieve the commit hash.")
     }
 }

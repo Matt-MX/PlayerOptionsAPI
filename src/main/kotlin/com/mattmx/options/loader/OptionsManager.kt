@@ -9,6 +9,8 @@ interface OptionsManager {
 
     fun saveOptions(uniqueId: UUID)
 
+    fun start() {}
+
     fun stop() {}
 
 }

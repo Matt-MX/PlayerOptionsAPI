@@ -10,11 +10,20 @@ import java.util.*
 class PersistentOptionsManager(
     val pluginImpl: OptionsPluginImpl
 ) : OptionsManager {
-    private val cache = Collections.synchronizedMap(hashMapOf<UUID, OptionsHolder>())
-    private var storageImpl = YamlOptionsStorage(
+    val cache = Collections.synchronizedMap(hashMapOf<UUID, OptionsHolder>())
+    var storageImpl = YamlOptionsStorage(
         File("${pluginImpl.dataFolder}/data.yml"),
         Duration.ofMinutes(5L).toSeconds() * 20L
     )
+
+    override fun stop() {
+        storageImpl.stop()
+        cache.clear()
+    }
+
+    override fun start() {
+        storageImpl.start()
+    }
 
     override fun getOptions(uniqueId: UUID) = cache.getOrPut(uniqueId) {
         storageImpl.getOptions(uniqueId) ?: OptionsHolder.default().clone()

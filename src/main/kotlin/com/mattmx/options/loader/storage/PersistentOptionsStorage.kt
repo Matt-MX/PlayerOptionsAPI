@@ -9,4 +9,8 @@ interface PersistentOptionsStorage {
 
     fun setOptions(uniqueId: UUID, options: OptionsHolder)
 
+    fun start() {}
+
+    fun stop() {}
+
 }

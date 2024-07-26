@@ -1,25 +1,32 @@
 package com.mattmx.options
 
 import com.mattmx.ktgui.GuiManager
+import com.mattmx.ktgui.commands.declarative.invoke
 import com.mattmx.ktgui.dsl.event
+import com.mattmx.ktgui.utils.not
+import com.mattmx.options.example.ExampleImpl
 import com.mattmx.options.loader.OptionsManager
 import com.mattmx.options.loader.PersistentOptionsManager
+import org.bukkit.configuration.serialization.ConfigurationSerialization
+import org.bukkit.entity.Player
 import org.bukkit.event.EventPriority
 import org.bukkit.event.player.AsyncPlayerPreLoginEvent
-import org.bukkit.event.player.PlayerJoinEvent
 import org.bukkit.event.player.PlayerQuitEvent
 import org.bukkit.plugin.java.JavaPlugin
 
 class OptionsPluginImpl : JavaPlugin() {
-    var optionsManager: OptionsManager = PersistentOptionsManager(this)
+    var optionsManager = PersistentOptionsManager(this)
         set(value) {
             field.stop()
             field = value
+            value.start()
         }
 
     override fun onEnable() {
-        instance = this
         GuiManager.init(this)
+        instance = this
+
+        optionsManager.start()
 
         // Load pre join
         event<AsyncPlayerPreLoginEvent>(EventPriority.MONITOR) {
@@ -32,6 +39,15 @@ class OptionsPluginImpl : JavaPlugin() {
         event<PlayerQuitEvent> {
             (optionsManager as? PersistentOptionsManager)?.freeFromCache(player.uniqueId)
         }
+
+        ExampleImpl().fakeOnEnable()
+
+        "options-save" {
+            runs<Player> {
+                optionsManager.storageImpl.save()
+                reply(!"&aSaved ${optionsManager.cache.size}")
+            }
+        } register this
     }
 
     companion object {
